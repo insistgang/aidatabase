@@ -334,7 +334,7 @@ export function GameMap({ levelStatus, onLevelClick }: GameMapProps) {
         <div
           className="absolute inset-0 opacity-55"
           style={{
-            backgroundImage: 'url(/assets/map-bg.jpg)',
+            backgroundImage: `url(${import.meta.env.BASE_URL}assets/map-bg.jpg)`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             filter: 'saturate(0.9) contrast(1.08)',

@@ -24,6 +24,18 @@ interface LearningEventPayload {
 }
 
 const SESSION_KEY = 'aidatabase_learning_session_id';
+const configuredApiBaseUrl = import.meta.env.VITE_LEARNING_API_BASE_URL;
+
+export const learningApiBaseUrl =
+  configuredApiBaseUrl === undefined
+    ? '/learning-api'
+    : configuredApiBaseUrl.replace(/\/$/, '');
+
+export function learningApiUrl(path: string) {
+  if (!learningApiBaseUrl) return null;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${learningApiBaseUrl}${normalizedPath}`;
+}
 
 function createSessionId() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -42,8 +54,11 @@ export function getLearningSessionId() {
 }
 
 export async function trackLearningEvent(payload: LearningEventPayload) {
+  const eventsUrl = learningApiUrl('/events');
+  if (!eventsUrl) return;
+
   try {
-    await fetch('/learning-api/events', {
+    await fetch(eventsUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

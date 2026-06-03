@@ -9,7 +9,7 @@ export function Header() {
       className="text-center py-8"
     >
       <motion.img
-        src="/assets/sailboat.png"
+        src={`${import.meta.env.BASE_URL}assets/sailboat.png`}
         alt="帆船"
         className="w-16 h-16 mx-auto mb-4 drop-shadow-lg"
         initial={{ scale: 0, rotate: -20 }}

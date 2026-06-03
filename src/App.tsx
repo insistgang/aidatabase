@@ -1,9 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Header } from '@/sections/Header';
 import { GameMap } from '@/sections/GameMap';
 import { InfoPanel } from '@/sections/InfoPanel';
 import { Footer } from '@/sections/Footer';
-import { AdminDashboard } from '@/pages/AdminDashboard';
 import { QuizModal } from '@/components/QuizModal';
 import { ResultModal } from '@/components/ResultModal';
 import { VictoryModal } from '@/components/VictoryModal';
@@ -13,8 +12,15 @@ import { allQuestions } from '@/data/questions';
 import { trackLearningEvent } from '@/lib/learningAnalytics';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
+import { Route, Routes } from 'react-router';
 
-export default function App() {
+const AdminDashboard = lazy(() =>
+  import('@/pages/AdminDashboard').then((module) => ({
+    default: module.AdminDashboard,
+  }))
+);
+
+function GameApp() {
   const game = useGameState();
   const [toast, setToast] = useState<string | null>(null);
 
@@ -26,10 +32,6 @@ export default function App() {
       },
     });
   }, []);
-
-  if (window.location.pathname === '/admin' || window.location.pathname === '/admin/') {
-    return <AdminDashboard />;
-  }
 
   const handleLevelClick = useCallback(
     (levelId: number) => {
@@ -83,7 +85,7 @@ export default function App() {
       <div
         className="fixed inset-0 pointer-events-none opacity-10"
         style={{
-          backgroundImage: 'url(/assets/ocean-bg.jpg)',
+          backgroundImage: `url(${import.meta.env.BASE_URL}assets/ocean-bg.jpg)`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           mixBlendMode: 'overlay',
@@ -203,5 +205,29 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route
+        path="/admin"
+        element={
+          <Suspense
+            fallback={
+              <div className="min-h-screen bg-slate-100 px-4 py-10 text-slate-950">
+                <div className="mx-auto max-w-sm rounded-lg border border-slate-200 bg-white p-6 text-sm shadow-sm">
+                  正在加载后台...
+                </div>
+              </div>
+            }
+          >
+            <AdminDashboard />
+          </Suspense>
+        }
+      />
+      <Route path="*" element={<GameApp />} />
+    </Routes>
   );
 }

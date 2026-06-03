@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>数海航标</title>
+    <script>
+      (function () {
+        var base = '/aidatabase/';
+        var path = window.location.pathname;
+        var search = window.location.search || '';
+        var hash = window.location.hash || '';
+
+        if (path.indexOf(base) !== 0) {
+          window.location.replace(base);
+          return;
+        }
+
+        var route = path.slice(base.length).replace(/^\/+/, '');
+        window.location.replace(route ? base + '#/' + route + search + hash : base);
+      })();
+    </script>
+  </head>
+  <body>
+    正在进入数海航标...
+  </body>
+</html>
