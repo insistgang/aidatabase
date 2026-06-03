@@ -10,6 +10,7 @@ import {
   Target,
   Users,
 } from 'lucide-react';
+import { learningApiUrl } from '@/lib/learningAnalytics';
 
 interface Summary {
   visits: number;
@@ -118,14 +119,22 @@ export function AdminDashboard() {
   const [draftToken, setDraftToken] = useState(token);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState('');
 
   const loadStats = useCallback(async () => {
     if (!token) return;
+    const statsUrl = learningApiUrl('/stats');
+    if (!statsUrl) {
+      setError('当前静态部署未配置学习数据后台 API');
+      setStats(null);
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/learning-api/stats', {
+      const response = await fetch(statsUrl, {
         headers: {
           'X-Admin-Token': token,
         },
@@ -158,9 +167,41 @@ export function AdminDashboard() {
     setToken(nextToken);
   };
 
-  const exportUrl = token
-    ? `/learning-api/export.csv?token=${encodeURIComponent(token)}`
-    : '#';
+  const handleExport = async () => {
+    if (!token || exporting) return;
+    const exportUrl = learningApiUrl('/export.csv');
+    if (!exportUrl) {
+      setError('当前静态部署未配置学习数据后台 API');
+      return;
+    }
+
+    setExporting(true);
+    setError('');
+    try {
+      const response = await fetch(exportUrl, {
+        headers: {
+          'X-Admin-Token': token,
+        },
+      });
+      if (!response.ok) {
+        throw new Error(response.status === 401 ? '管理口令不正确' : `导出失败：${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'learning-events.csv';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '无法导出后台数据');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   if (!token) {
     return (
@@ -198,13 +239,14 @@ export function AdminDashboard() {
             <p className="mt-1 text-sm text-slate-500">访问、答题、关卡完成情况统计</p>
           </div>
           <div className="flex gap-2">
-            <a
-              href={exportUrl}
-              className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm hover:bg-slate-50"
+            <button
+              onClick={() => void handleExport()}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Download size={16} />
-              导出 CSV
-            </a>
+              {exporting ? '导出中' : '导出 CSV'}
+            </button>
             <button
               onClick={() => void loadStats()}
               className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"

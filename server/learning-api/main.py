@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException, Query, Request
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
@@ -102,8 +102,8 @@ def bool_to_int(value: bool | None) -> int | None:
     return 1 if value else 0
 
 
-def require_admin(x_admin_token: str | None, token_query: str | None = None) -> None:
-    token = x_admin_token or token_query or ""
+def require_admin(x_admin_token: str | None) -> None:
+    token = x_admin_token or ""
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -238,11 +238,8 @@ def stats(x_admin_token: str | None = Header(default=None)) -> dict[str, Any]:
 
 
 @app.get("/learning-api/export.csv", response_class=PlainTextResponse)
-def export_csv(
-    x_admin_token: str | None = Header(default=None),
-    token: str | None = Query(default=None),
-) -> PlainTextResponse:
-    require_admin(x_admin_token, token)
+def export_csv(x_admin_token: str | None = Header(default=None)) -> PlainTextResponse:
+    require_admin(x_admin_token)
     output = io.StringIO()
     writer = csv.writer(output)
     headers = [
