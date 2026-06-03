@@ -1,11 +1,105 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>数海航标</title>
+    <style>
+      [id*="coze" i],
+      [class*="coze" i],
+      [id*="kimi" i],
+      [class*="kimi" i],
+      [id*="inspect" i],
+      [class*="inspect" i] {
+        display: none !important;
+      }
+    </style>
+    <script>
+      (function () {
+        var base = '/aidatabase/';
+        var from = '/assets/';
+        var to = base + 'assets/';
+
+        function fixAssetUrl(value) {
+          if (!value || value.indexOf(from) === -1) return value;
+          return value
+            .replace(/url\((['"]?)\/assets\//g, 'url($1' + to)
+            .replace(/([='"(])\/assets\//g, '$1' + to)
+            .replace(/^\/assets\//, to);
+        }
+
+        function cleanDebugAttributes(el) {
+          if (!el || !el.attributes) return;
+          for (var i = el.attributes.length - 1; i >= 0; i -= 1) {
+            var name = el.attributes[i].name;
+            if (
+              name === 'code-path' ||
+              name === 'data-code-path' ||
+              /^(data-)?(coze|kimi|inspect)/i.test(name)
+            ) {
+              el.removeAttribute(name);
+            }
+          }
+        }
+
+        function fixElement(el) {
+          if (!el || el.nodeType !== 1) return;
+          cleanDebugAttributes(el);
+
+          if (el.tagName === 'IMG') {
+            var src = el.getAttribute('src') || '';
+            if (src.indexOf(from) === 0) {
+              el.setAttribute('src', to + src.slice(from.length));
+            }
+          }
+
+          if (el.style && el.style.backgroundImage) {
+            el.style.backgroundImage = fixAssetUrl(el.style.backgroundImage);
+          }
+
+          el.querySelectorAll('img[src^="/assets/"]').forEach(function (img) {
+            img.setAttribute('src', to + img.getAttribute('src').slice(from.length));
+          });
+          el.querySelectorAll('[style*="/assets/"]').forEach(function (node) {
+            node.style.backgroundImage = fixAssetUrl(node.style.backgroundImage);
+          });
+          el.querySelectorAll('[code-path], [data-code-path]').forEach(cleanDebugAttributes);
+        }
+
+        function sweep() {
+          fixElement(document.documentElement);
+        }
+
+        var observer = new MutationObserver(function (records) {
+          records.forEach(function (record) {
+            if (record.type === 'attributes') {
+              fixElement(record.target);
+              return;
+            }
+            record.addedNodes.forEach(fixElement);
+          });
+        });
+
+        observer.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['src', 'style', 'code-path', 'data-code-path'],
+        });
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', sweep);
+        } else {
+          sweep();
+        }
+        window.addEventListener('load', sweep);
+        setTimeout(sweep, 100);
+        setTimeout(sweep, 500);
+        setTimeout(sweep, 1500);
+      })();
+    </script>
     <script type="module" crossorigin src="/aidatabase/assets/index-Bon3eidY.js"></script>
-    <link rel="stylesheet" crossorigin href="/aidatabase/assets/index-K2xdr0Sn.css">
+    <link rel="stylesheet" crossorigin href="/aidatabase/assets/index-K2xdr0Sn.css" />
   </head>
   <body>
     <div id="root"></div>
