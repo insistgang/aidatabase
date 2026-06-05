@@ -3,22 +3,12 @@ import type { GameState, LevelStatus, QuizResult, GamePhase, Question } from '@/
 import { levels } from '@/data/levels';
 import { getQuestionsByIds, getQuestionsByLevel } from '@/data/questions';
 import { trackLearningEvent } from '@/lib/learningAnalytics';
-
-const STORAGE_KEY = 'kolm_game_state';
-
-function loadState(): Partial<GameState> | null {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-  } catch { /* ignore */ }
-  return null;
-}
-
-function saveState(state: GameState) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch { /* ignore */ }
-}
+import {
+  loadGameStateForPlayer,
+  loadInitialGameState,
+  normalizePlayerName,
+  saveGameStateForPlayer,
+} from '@/lib/playerGameStorage';
 
 const initialLevelStatus: LevelStatus[] = levels.map((_l, i) =>
   i === 0 ? 'available' : 'locked'
@@ -39,9 +29,7 @@ const defaultState: GameState = {
   initialized: false,
 };
 
-function createInitialState(): GameState {
-  const saved = loadState();
-
+function restoreState(saved: Partial<GameState> | null): GameState {
   const state = {
     ...defaultState,
     ...saved,
@@ -70,6 +58,10 @@ function createInitialState(): GameState {
   return restoredState;
 }
 
+function createInitialState(): GameState {
+  return restoreState(loadInitialGameState(localStorage));
+}
+
 export function useGameState() {
   const [state, setState] = useState<GameState>(() => createInitialState());
 
@@ -80,12 +72,22 @@ export function useGameState() {
 
   // Persist state changes
   useEffect(() => {
-    saveState(state);
+    saveGameStateForPlayer(localStorage, state);
   }, [state]);
 
   const setPlayerName = useCallback((name: string) => {
+    const currentPlayerName = normalizePlayerName(state.playerName);
+    const nextPlayerName = normalizePlayerName(name);
+
+    if (currentPlayerName !== nextPlayerName) {
+      saveGameStateForPlayer(localStorage, state);
+      const savedState = nextPlayerName ? loadGameStateForPlayer(localStorage, name) : null;
+      setState(restoreState({ ...savedState, playerName: name }));
+      return;
+    }
+
     setState(prev => ({ ...prev, playerName: name }));
-  }, []);
+  }, [state]);
 
   const initializeGame = useCallback(() => {
     setState(prev => ({
@@ -281,8 +283,10 @@ export function useGameState() {
   }, []);
 
   const resetGame = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
-    setState({ ...defaultState });
+    setState(prev => ({
+      ...defaultState,
+      playerName: prev.playerName,
+    }));
   }, []);
 
   const getCurrentQuestion = useCallback(() => {

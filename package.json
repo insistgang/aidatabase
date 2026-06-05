@@ -7,8 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:github": "tsc -b && VITE_BASE_PATH=/aidatabase/ VITE_LEARNING_API_BASE_URL= vite build",
+    "build:surge": "tsc -b && VITE_BASE_PATH=/ VITE_LEARNING_API_BASE_URL= vite build && cp dist/index.html dist/200.html",
+    "deploy:surge": "npm run build:surge && surge dist aidatabase-zhangxin.surge.sh",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:player-storage": "OUT_DIR=$(mktemp -d /private/tmp/aidatabase-player-storage-test.XXXXXX) && tsc src/lib/playerGameStorage.ts --outDir \"$OUT_DIR\" --module ESNext --target ES2022 --moduleResolution bundler --skipLibCheck --strict --esModuleInterop && PLAYER_GAME_STORAGE_MODULE=\"$OUT_DIR/lib/playerGameStorage.js\" node --test tests/playerGameStorage.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
