@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { User, Anchor, BookOpen, Info, Clock, Trophy, Skull, Heart } from 'lucide-react';
 
@@ -20,6 +21,18 @@ export function InfoPanel({
   score,
   initialized,
 }: InfoPanelProps) {
+  const [playerNameDraft, setPlayerNameDraft] = useState(playerName);
+
+  useEffect(() => {
+    setPlayerNameDraft(playerName);
+  }, [playerName]);
+
+  const commitPlayerName = () => {
+    if (playerNameDraft !== playerName) {
+      onPlayerNameChange(playerNameDraft);
+    }
+  };
+
   return (
     <div className="w-full lg:w-[360px] flex flex-col gap-4">
       {/* Player Info Card */}
@@ -38,8 +51,19 @@ export function InfoPanel({
             <label className="text-xs text-[#94a3b8] block mb-1">航海者名称</label>
             <input
               type="text"
-              value={playerName}
-              onChange={(e) => onPlayerNameChange(e.target.value)}
+              value={playerNameDraft}
+              maxLength={128}
+              onChange={(event) => setPlayerNameDraft(event.target.value)}
+              onBlur={commitPlayerName}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                } else if (event.key === 'Escape') {
+                  setPlayerNameDraft(playerName);
+                  event.currentTarget.blur();
+                }
+              }}
               placeholder="请输入你的名字"
               className="w-full bg-[#1e3a5f] border border-[#1e3a5f] rounded-lg px-3 py-2.5 text-sm text-[#e2e8f0] placeholder:text-[#64748b] focus:outline-none focus:border-[#d4a843] transition-colors"
             />

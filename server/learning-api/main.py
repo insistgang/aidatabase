@@ -4,39 +4,83 @@ import csv
 import io
 import json
 import os
+import secrets
 import sqlite3
+import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse, PlainTextResponse
+from pydantic import BaseModel, Field, model_validator
+
+from security import (
+    EventRateLimiter,
+    prune_event_history,
+    sanitize_csv_cell,
+    validate_event_payload,
+)
 
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/var/lib/aidatabase-learning"))
 DB_PATH = DATA_DIR / "learning.db"
 ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+EVENT_RATE_LIMIT_PER_MINUTE = max(
+    1, int(os.environ.get("EVENT_RATE_LIMIT_PER_MINUTE", "120"))
+)
+MAX_EVENT_REQUEST_BYTES = max(
+    1024, int(os.environ.get("MAX_EVENT_REQUEST_BYTES", "16384"))
+)
+MAX_STORED_EVENTS = max(1, int(os.environ.get("MAX_STORED_EVENTS", "200000")))
 
 app = FastAPI(title="Aidatabase Learning API")
+event_rate_limiter = EventRateLimiter(
+    limit=EVENT_RATE_LIMIT_PER_MINUTE,
+    window_seconds=60,
+)
 
 
 class LearningEvent(BaseModel):
     event_type: str = Field(min_length=1, max_length=64)
     session_id: str = Field(min_length=1, max_length=128)
-    student_name: str | None = Field(default=None, max_length=128)
-    level_id: int | None = None
-    level_name: str | None = Field(default=None, max_length=128)
-    question_id: int | None = None
-    selected_answer: int | None = None
-    correct: bool | None = None
-    time_taken: float | None = None
-    score: int | None = None
-    lives: int | None = None
-    correct_count: int | None = None
-    total_questions: int | None = None
-    passed: bool | None = None
-    metadata: dict[str, Any] | None = None
+    student_name: Optional[str] = Field(default=None, max_length=128)
+    level_id: Optional[int] = None
+    level_name: Optional[str] = Field(default=None, max_length=128)
+    question_id: Optional[int] = None
+    selected_answer: Optional[int] = None
+    correct: Optional[bool] = None
+    time_taken: Optional[float] = None
+    score: Optional[int] = None
+    lives: Optional[int] = None
+    correct_count: Optional[int] = None
+    total_questions: Optional[int] = None
+    passed: Optional[bool] = None
+    metadata: Optional[dict[str, Any]] = None
+
+    @model_validator(mode="after")
+    def validate_payload(self) -> "LearningEvent":
+        validate_event_payload(self.model_dump())
+        return self
+
+
+@app.middleware("http")
+async def limit_event_request_size(request: Request, call_next: Any) -> Any:
+    if request.url.path == "/learning-api/events":
+        content_length = request.headers.get("content-length")
+        if content_length:
+            try:
+                if int(content_length) > MAX_EVENT_REQUEST_BYTES:
+                    return JSONResponse(
+                        status_code=413,
+                        content={"detail": "Request body too large"},
+                    )
+            except ValueError:
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": "Invalid Content-Length"},
+                )
+    return await call_next(request)
 
 
 def connect() -> sqlite3.Connection:
@@ -88,23 +132,23 @@ def row_to_dict(row: sqlite3.Row) -> dict[str, Any]:
 
 
 def client_ip(request: Request) -> str:
-    forwarded_for = request.headers.get("x-forwarded-for", "")
-    if forwarded_for:
-        return forwarded_for.split(",")[0].strip()
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
     if request.client:
         return request.client.host
     return ""
 
 
-def bool_to_int(value: bool | None) -> int | None:
+def bool_to_int(value: Optional[bool]) -> Optional[int]:
     if value is None:
         return None
     return 1 if value else 0
 
 
-def require_admin(x_admin_token: str | None) -> None:
+def require_admin(x_admin_token: Optional[str]) -> None:
     token = x_admin_token or ""
-    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+    if not ADMIN_TOKEN or not secrets.compare_digest(token, ADMIN_TOKEN):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
@@ -115,6 +159,14 @@ def health() -> dict[str, str]:
 
 @app.post("/learning-api/events")
 def create_event(event: LearningEvent, request: Request) -> dict[str, str]:
+    request_ip = client_ip(request)
+    if not event_rate_limiter.allow(request_ip, now=time.monotonic()):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many event requests",
+            headers={"Retry-After": "60"},
+        )
+
     metadata = json.dumps(event.metadata or {}, ensure_ascii=False)
     created_at = datetime.now(timezone.utc).isoformat()
     with connect() as conn:
@@ -144,16 +196,17 @@ def create_event(event: LearningEvent, request: Request) -> dict[str, str]:
                 event.correct_count,
                 event.total_questions,
                 bool_to_int(event.passed),
-                client_ip(request),
+                request_ip,
                 request.headers.get("user-agent", ""),
                 metadata,
             ),
         )
+        prune_event_history(conn, MAX_STORED_EVENTS)
     return {"status": "ok"}
 
 
 @app.get("/learning-api/stats")
-def stats(x_admin_token: str | None = Header(default=None)) -> dict[str, Any]:
+def stats(x_admin_token: Optional[str] = Header(default=None)) -> dict[str, Any]:
     require_admin(x_admin_token)
     with connect() as conn:
         summary = row_to_dict(
@@ -238,7 +291,7 @@ def stats(x_admin_token: str | None = Header(default=None)) -> dict[str, Any]:
 
 
 @app.get("/learning-api/export.csv", response_class=PlainTextResponse)
-def export_csv(x_admin_token: str | None = Header(default=None)) -> PlainTextResponse:
+def export_csv(x_admin_token: Optional[str] = Header(default=None)) -> PlainTextResponse:
     require_admin(x_admin_token)
     output = io.StringIO()
     writer = csv.writer(output)
@@ -273,7 +326,7 @@ def export_csv(x_admin_token: str | None = Header(default=None)) -> PlainTextRes
             ORDER BY id DESC
             """
         ):
-            writer.writerow([row[key] for key in headers])
+            writer.writerow([sanitize_csv_cell(row[key]) for key in headers])
 
     return PlainTextResponse(
         output.getvalue(),
