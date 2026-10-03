@@ -28,8 +28,29 @@ jobs:
           node-version: 22
           cache: npm
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+          cache: pip
+          cache-dependency-path: server/learning-api/requirements.txt
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Install learning API dependencies
+        run: python -m pip install -r server/learning-api/requirements.txt
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Import learning API
+        env:
+          DATA_DIR: ${{ runner.temp }}/aidatabase-learning
+        run: PYTHONPATH=server/learning-api python -c "import main"
 
       - name: Build
         run: npm run build:github
