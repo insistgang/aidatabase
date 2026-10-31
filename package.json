@@ -7,12 +7,14 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "build:github": "tsc -b && VITE_BASE_PATH=/aidatabase/ VITE_LEARNING_API_BASE_URL= vite build",
+    "build:selfhost": "tsc -b && VITE_BASE_PATH=/ VITE_LEARNING_API_BASE_URL=/learning-api vite build",
     "build:surge": "tsc -b && VITE_BASE_PATH=/ VITE_LEARNING_API_BASE_URL= vite build && cp dist/index.html dist/200.html",
     "deploy:surge": "npm run build:surge && surge dist aidatabase-squ.surge.sh",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "npm run test:player-storage && npm run test:server",
+    "test": "npm run test:player-storage && npm run test:build-config && npm run test:server",
     "test:player-storage": "OUT_DIR=$(mktemp -d) && tsc src/lib/playerGameStorage.ts --outDir \"$OUT_DIR\" --module ESNext --target ES2022 --moduleResolution bundler --skipLibCheck --strict --esModuleInterop && PLAYER_GAME_STORAGE_MODULE=\"$OUT_DIR/lib/playerGameStorage.js\" node --test tests/playerGameStorage.test.mjs",
+    "test:build-config": "node --test tests/buildConfig.test.mjs",
     "test:server": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests/server_security_test.py"
   },
   "dependencies": {

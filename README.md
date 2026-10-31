@@ -27,7 +27,24 @@ npm test
 npm run build
 ```
 
-`npm test` 包含玩家存档测试和后端安全逻辑测试。
+`npm test` 包含玩家存档测试、构建目标配置测试和后端安全逻辑测试。
+
+## 部署目标与学习数据采集
+
+本项目有两类部署目标，**构建产物不同**，请勿混用：
+
+| 构建脚本 | 部署目标 | API 基址 | 学习事件上报 | 管理后台 |
+|---|---|---|---|---|
+| `npm run build:github` | GitHub Pages（`insistgang.top/aidatabase/`） | 空（禁用） | 不可用 | 不可用 |
+| `npm run build:selfhost` | 自建站（`aidatabase.insistgang.top`） | `/learning-api`（相对路径） | 可用 | 可用 |
+| `npm run build:surge` | Surge 静态托管 | 空（禁用） | 不可用 | 不可用 |
+
+说明：
+
+- GitHub Pages 是**纯静态托管**，没有同源后端。若保留默认的 `/learning-api` 相对路径，前端请求会稳定收到 404。因此 `build:github` 显式把 `VITE_LEARNING_API_BASE_URL` 置空，前端据此**优雅降级**为不上报（页面显示「当前静态部署未配置学习数据后台 API」）。
+- 自建站由 nginx 将 `/learning-api/` 反向代理到 FastAPI（见 `server/nginx`），因此 `build:selfhost` 使用相对路径 `/learning-api`，可获得同源请求，**学习事件采集与管理后台均可用**。
+- **直接用 `build:github` 的产物覆盖自建站，会导致自建站丢失采集能力**（API 基址被编译为空）。自建站请使用 `build:selfhost` 产物。
+- 后端**未配置 CORS**，因此不建议让 Pages 版跨域调用自建站后端（`application/json` 属非简单请求，会触发预检并失败）。
 
 ## 学习数据服务
 
