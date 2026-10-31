@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="数海航标">
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a2d4a"/>
+      <stop offset="100%" stop-color="#0f1729"/>
+    </linearGradient>
+    <linearGradient id="sail" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5e6bd"/>
+      <stop offset="100%" stop-color="#d4a843"/>
+    </linearGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#d4a843" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#d4a843" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8c868"/>
+      <stop offset="100%" stop-color="#b8862f"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景：圆角方 + 深海渐变 -->
+  <rect width="64" height="64" rx="14" fill="url(#sea)"/>
+
+  <!-- 灯塔光束 -->
+  <path d="M40 18 L64 8 L64 30 Z" fill="url(#beam)"/>
+
+  <!-- 灯塔塔身 -->
+  <path d="M36 20 L44 20 L46 44 L34 44 Z" fill="#1e3a5f" stroke="#d4a843" stroke-width="1.4" stroke-linejoin="round"/>
+  <!-- 灯塔条纹 -->
+  <path d="M35.2 28 L44.8 28 L45.3 33 L34.7 33 Z" fill="#d4a843" opacity="0.9"/>
+  <!-- 灯塔灯室 -->
+  <rect x="37.5" y="13" width="5" height="7" rx="1.4" fill="#f5e6bd"/>
+  <circle cx="40" cy="16.5" r="2.1" fill="#fff6d8"/>
+  <!-- 灯塔顶盖 -->
+  <path d="M36.4 13 L40 9.6 L43.6 13 Z" fill="#d4a843"/>
+
+  <!-- 海浪 -->
+  <path d="M4 50 q6 -3.4 12 0 t12 0 t12 0 t12 0 t8 0" fill="none" stroke="#2b4a73" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M4 56 q6 -3.4 12 0 t12 0 t12 0 t12 0 t8 0" fill="none" stroke="#24405f" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- 帆船 -->
+  <!-- 主帆 -->
+  <path d="M26 42 L26 20 L10 42 Z" fill="url(#sail)"/>
+  <!-- 前帆 -->
+  <path d="M27.6 42 L27.6 25 L38 42 Z" fill="#f0dfae"/>
+  <!-- 桅杆 -->
+  <rect x="26.2" y="17" width="1.5" height="26" rx="0.7" fill="#8b6a2f"/>
+  <!-- 船身 -->
+  <path d="M8 43.4 L38 43.4 L33 50.4 L13 50.4 Z" fill="url(#hull)"/>
+  <!-- 船身高光 -->
+  <path d="M8 43.4 L38 43.4 L36.4 45.6 L9.6 45.6 Z" fill="#f5e6bd" opacity="0.55"/>
+</svg>
